@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121212">
+<title>Pono Voice</title>
+<meta name="description" content="Naskah jadi suara dengan Gemini TTS. Ringan, jalan di browser, API key milik sendiri.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238b7cf6'/%3E%3Cpath d='M8 13v6M12 9v14M16 12v8M20 7v18M24 12v8' stroke='%23121212' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#121212; --card:#1b1a18; --card2:#232120; --line:#2f2c29;
+  --text:#f2eee9; --mut:#8f877e; --acc:#8b7cf6; --acc-ink:#0f0c1f; --ok:#6fcf97; --err:#ff7466;
+  --glow:rgba(139,124,246,.18);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){
+  :root{--bg:#f6f3ee;--card:#fff;--card2:#f1ece4;--line:#e2dbd0;--text:#1e1a16;--mut:#7b7268;--acc:#6d5bd9;--acc-ink:#fff;--glow:rgba(109,91,217,.14);color-scheme:light}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--sans);
+  background-image:radial-gradient(70% 40% at 50% -6%,var(--glow),transparent 70%);background-repeat:no-repeat;
+  padding:0 16px calc(120px + env(safe-area-inset-bottom))}
+main{max-width:640px;margin:0 auto}
+header{display:flex;align-items:center;gap:12px;padding:22px 0 14px}
+.logo{width:38px;height:38px;border-radius:11px;background:var(--acc);display:grid;place-items:center;flex:none}
+.logo svg{width:22px;height:22px}
+h1{font-size:19px;line-height:1.1;margin:0;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--mut);font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.pill{font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--acc);
+  border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);background:color-mix(in srgb,var(--acc) 10%,transparent);padding:5px 8px;border-radius:99px;white-space:nowrap}
+.head h2{font-size:16px;margin:0;letter-spacing:-.005em}
+.head .sp{flex:1}
+label.f{display:block;font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 7px}
+textarea,input[type=text],input[type=password],select{
+  width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px;
+  padding:12px 13px;font:inherit;font-size:16px;outline:none;transition:border-color .15s}
+textarea{resize:vertical;min-height:150px;line-height:1.55}
+textarea.sm{min-height:76px}
+textarea:focus,input:focus,select:focus{border-color:var(--acc)}
+::placeholder{color:color-mix(in srgb,var(--mut) 75%,transparent)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 16px;border-radius:12px;
+  border:1px solid var(--line);background:var(--card2);font-weight:600;font-size:14px}
+.btn:active{transform:scale(.98)}
+.btn.pri{background:var(--acc);color:var(--acc-ink);border-color:transparent}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px;border-radius:10px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn svg,.ib svg{width:17px;height:17px;flex:none}
+.ib{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--line);background:var(--card2)}
+.ib[disabled]{opacity:.4;pointer-events:none}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:9px;color:var(--mut);font:12px var(--mono)}
+.hint{color:var(--mut);font-size:12.5px;margin:9px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:38px;padding:0 13px;border-radius:99px;border:1px solid var(--line);background:var(--card2);font-size:13.5px;font-weight:500}
+.chip[aria-pressed=true]{background:color-mix(in srgb,var(--acc) 18%,transparent);border-color:var(--acc);color:var(--text)}
+.chip.tag{font:500 12.5px var(--mono);min-height:34px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg button{border:0;background:none;min-height:36px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--mut)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--acc-ink)}
+.row{display:flex;gap:10px;align-items:center}
+.sub{margin-top:16px}
+/* voice */
+.vsum{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 10px 10px 14px}
+.vsum b{font-size:16px}.vsum span{color:var(--mut);font-size:13px}
+.vsum .sp{flex:1;min-width:0}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:10px}
+.v{text-align:left;padding:10px 11px;border-radius:12px;border:1px solid var(--line);background:var(--card2);line-height:1.25}
+.v b{display:block;font-size:14px}.v span{color:var(--mut);font-size:12px}
+.v[aria-pressed=true]{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent)}
+/* key */
+details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:32px}
+details>summary::-webkit-details-marker{display:none}
+.chev{margin-left:auto;width:16px;height:16px;transition:transform .2s;color:var(--mut)}
+details[open] .chev{transform:rotate(180deg)}
+.ok{color:var(--ok);font:600 12px var(--mono)}
+.chk{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:13.5px;color:var(--mut)}
+.chk input{width:18px;height:18px;accent-color:var(--acc)}
+a{color:var(--acc)}
+/* result */
+.final{font:12.5px var(--mono);color:var(--mut);background:var(--card2);border:1px dashed var(--line);border-radius:10px;padding:9px 11px;margin-top:10px;word-break:break-word}
+.tl{display:flex;gap:3px;height:30px;margin-bottom:8px}
+.tl button{border:1px solid;border-radius:8px;font:600 10.5px var(--mono);padding:0;min-width:0;overflow:hidden;white-space:nowrap}
+.wave{position:relative;background:var(--card2);border:1px solid var(--line);border-radius:12px;height:72px;cursor:pointer;overflow:hidden;touch-action:none}
+.wave canvas{width:100%;height:100%;display:block}
+.player{display:flex;align-items:center;gap:12px;margin-top:10px}
+.time{font:13px var(--mono);color:var(--mut)}
+.scene{border:1px solid var(--line);border-radius:12px;background:var(--card2);padding:11px;margin-top:10px}
+.scene .top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.scene .top b{font-size:13.5px}.scene .top .t{font:11.5px var(--mono);color:var(--mut);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scene textarea{min-height:64px;font-size:15px;background:var(--card);padding:10px 11px}
+.st{font:12px var(--mono);margin-top:7px;color:var(--mut)}
+.st.err{color:var(--err)}.st.go{color:var(--acc)}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:r .7s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes r{to{transform:rotate(360deg)}}
+/* bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.bar .in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.bar .info{flex:1;min-width:0;font:12px/1.35 var(--mono);color:var(--mut)}
+.bar .info b{display:block;color:var(--text);font-size:13px}
+.go{position:relative;overflow:hidden;min-width:150px;min-height:50px;font-size:15px}
+.go::before{content:"";position:absolute;inset:0;width:var(--p,0%);background:rgba(255,255,255,.22);transition:width .3s}
+.go>*{position:relative}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:30;max-width:608px;margin:0 auto;
+  background:var(--card2);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:12px;padding:11px 14px;font-size:13.5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);display:none}
+.toast.show{display:block}.toast.err{border-left-color:var(--err)}.toast.ok{border-left-color:var(--ok)}
+footer{color:var(--mut);font-size:12px;text-align:center;margin:22px 0 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#0f0c1f" stroke-width="2.4" stroke-linecap="round"><path d="M5 10v4M9 6v12M13 9v6M17 4v16M21 9v6"/></svg></div>
+  <div><h1>Pono Voice</h1><p>Naskah jadi suara · Gemini TTS</p></div>
+</header>
+
+<!-- API -->
+<section class="card" id="keyCard">
+  <details id="keyBox" open>
+    <summary>
+      <span class="pill">Siapkan</span><h2 style="font-size:16px;margin:0">API key &amp; model</h2>
+      <span class="ok" id="keyOk" hidden>● TERSIMPAN</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
+    <div style="margin-top:14px">
+      <label class="f" for="key">Gemini API key</label>
+      <div class="row">
+        <input id="key" type="password" placeholder="AIza…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="ib" id="eye" type="button" aria-label="Tampilkan key"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+      <label class="chk"><input type="checkbox" id="remember"> Ingat key di perangkat ini</label>
+      <p class="hint">Key disimpan hanya di browser kamu dan dikirim langsung ke Google. Buat di <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+      <div class="sub"><label class="f" for="model">Model</label>
+        <select id="model">
+          <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas)</option>
+          <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (hemat &amp; cepat)</option>
+          <option value="__custom">Model lain…</option>
+        </select>
+        <input id="modelCustom" type="text" placeholder="id model, contoh: gemini-3.8-flash-tts" style="margin-top:8px" hidden autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="sub row"><button class="btn sm" id="forget" type="button">Hapus data tersimpan</button></div>
+    </div>
+  </details>
+</section>
+
+<!-- 1 Naskah -->
+<section class="card">
+  <div class="head"><span class="pill">Langkah 1</span><h2>Tulis naskah</h2></div>
+  <textarea id="script" placeholder="Pernah nggak kamu bingung, kenapa bahasa di dunia itu beda-beda?&#10;&#10;Karena ada gunung, laut, dan sungai yang memisahkan manusia di masa lalu. Jadi kata baru muncul di satu tempat."></textarea>
+  <div class="meta"><span id="sWords">0 kata</span><span id="sChars">0 karakter</span><span id="sDur">≈ 0 dtk</span><span id="sScenes">0 adegan</span></div>
+  <p class="hint">Pisahkan adegan dengan satu baris kosong. Baca keras dulu: kalimat yang bikin lidah tersandung perlu dipersingkat.</p>
+</section>
+
+<!-- 2 Suara -->
+<section class="card">
+  <div class="head"><span class="pill">Langkah 2</span><h2>Pilih suara</h2></div>
+  <div class="vsum">
+    <div class="sp"><b id="vName">Kore</b> <span id="vDesc">Tegas</span></div>
+    <button class="btn sm" id="vTest" type="button"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Tes</button>
+    <button class="btn sm" id="vToggle" type="button" aria-expanded="false">Ganti</button>
+  </div>
+  <div id="vWrap" hidden>
+    <input id="vSearch" type="text" placeholder="Cari nama atau karakter suara…" style="margin-top:10px" autocomplete="off">
+    <div class="vgrid" id="vGrid"></div>
+  </div>
+</section>
+
+<!-- 3 Emosi -->
+<section class="card">
+  <div class="head"><span class="pill">Langkah 3</span><h2>Atur emosi &amp; tempo</h2></div>
+  <label class="f">Gaya bicara</label>
+  <div class="chips" id="emo"></div>
+  <div class="sub"><label class="f">Tempo</label>
+    <div class="seg" id="tempo"><button type="button" data-v="slow">Lambat</button><button type="button" data-v="normal">Normal</button><button type="button" data-v="fast">Cepat</button></div>
+  </div>
+  <div class="sub"><label class="f">Sisipkan ke naskah (di posisi kursor)</label>
+    <div class="chips" id="tags"></div>
+  </div>
+</section>
+
+<!-- 4 Konteks -->
+<section class="card">
+  <div class="head"><span class="pill">Langkah 4</span><h2>Konteks adegan</h2></div>
+  <textarea id="ctx" class="sm" placeholder="Pembicara sedang berdiri di depan kamera, gaya edukatif"></textarea>
+  <p class="hint">Tulis singkat, cukup cara menyampaikannya. Jangan tulis umur, gender, atau nama.</p>
+  <div class="final" id="finalStyle">Gaya akhir: (kosong, suara netral)</div>
+</section>
+
+<!-- 5 Ejaan -->
+<section class="card">
+  <details id="dictBox">
+    <summary><span class="pill">Opsional</span><h2 style="font-size:16px;margin:0">Kamus ejaan</h2>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+    <div style="margin-top:12px">
+      <textarea id="dict" class="sm" placeholder="Satu aturan per baris, format kata=ejaan&#10;rimousyen=rimiusyen&#10;AI=ei ai"></textarea>
+      <p class="hint">Kalau ada kata salah ucap, tulis ejaan yang kamu mau di sini lalu generate ulang. Teks di naskah tidak berubah, hanya yang dikirim ke suara.</p>
+    </div>
+  </details>
+</section>
+
+<!-- Hasil -->
+<section class="card" id="result" hidden>
+  <div class="head"><span class="pill">Hasil</span><h2>Cek sinkron &amp; unduh</h2></div>
+  <div class="tl" id="tl"></div>
+  <div class="wave" id="waveBox"><canvas id="wave"></canvas></div>
+  <div class="player">
+    <button class="ib" id="play" type="button" aria-label="Putar"><svg id="icoPlay" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+    <span class="time" id="time">0:00.0 / 0:00.0</span>
+    <span style="flex:1"></span>
+    <label class="f" for="gap" style="margin:0">Jeda</label>
+    <select id="gap" style="width:auto;padding:7px 9px;font-size:14px;border-radius:9px">
+      <option value="0">0 dtk</option><option value="0.25">0.25</option><option value="0.5">0.5</option><option value="0.8">0.8</option>
+    </select>
+  </div>
+  <div class="row sub" style="flex-wrap:wrap">
+    <input id="fname" type="text" value="naskah" style="flex:1;min-width:120px" aria-label="Nama file" autocapitalize="off" spellcheck="false">
+    <button class="btn pri" id="dl" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Unduh WAV</button>
+    <button class="btn" id="copyT" type="button">Salin waktu</button>
+  </div>
+  <div id="scenes"></div>
+</section>
+
+<footer>Suara dihasilkan AI. Gunakan sesuai kebijakan platform tempat kamu mengunggah.</footer>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="bar"><div class="in">
+  <div class="info"><b id="bInfo">0 adegan</b><span id="bSub">Isi naskah dulu</span></div>
+  <button class="btn pri go" id="go" type="button"><span id="goTxt">Generate</span></button>
+</div></div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const store={
+  get(k,d){try{const v=localStorage.getItem('pv.'+k);return v==null?d:JSON.parse(v)}catch{return d}},
+  set(k,v){try{localStorage.setItem('pv.'+k,JSON.stringify(v))}catch{}},
+  del(k){try{localStorage.removeItem('pv.'+k)}catch{}}
+};
+const VOICES=[["Zephyr","Cerah"],["Puck","Ceria"],["Charon","Informatif"],["Kore","Tegas"],["Fenrir","Bersemangat"],["Leda","Muda"],["Orus","Tegas"],["Aoede","Ringan"],["Callirrhoe","Santai"],["Autonoe","Cerah"],["Enceladus","Berembus"],["Iapetus","Jernih"],["Umbriel","Santai"],["Algieba","Halus"],["Despina","Halus"],["Erinome","Jernih"],["Algenib","Serak"],["Rasalgethi","Informatif"],["Laomedeia","Ceria"],["Achernar","Lembut"],["Alnilam","Tegas"],["Schedar","Rata"],["Gacrux","Dewasa"],["Pulcherrima","Lugas"],["Achird","Ramah"],["Zubenelgenubi","Kasual"],["Vindemiatrix","Lembut"],["Sadachbia","Hidup"],["Sadaltager","Berpengetahuan"],["Sulafat","Hangat"]];
+const EMOS=[["netral","Netral",""],["ceria","Ceria","cheerful and upbeat"],["serius","Serius","serious and authoritative"],["penasaran","Penasaran","curious and intrigued"],["bisik","Bisikan","whispered and intimate"],["santai","Santai","relaxed and conversational"],["dramatis","Dramatis","dramatic, building tension"],["tegas","Tegas","firm and confident"],["hangat","Hangat","warm and friendly"],["antusias","Antusias","excited and energetic"]];
+const TAGS=[["Jeda pendek","<short pause>"],["Jeda panjang","<long pause>"],["Napas","<breath>"],["Tawa kecil","<chuckle>"],["Desah","<sigh>"],["Bisik","<whispers>"],["Kaget","<gasp>"]];
+const TEMPO={slow:"slower pace",normal:"",fast:"slightly faster pace"};
+const COLORS=["#8b7cf6","#38bdf8","#5eead4","#f472b6","#a3e635","#c4b5fd"];
+const MAXCHARS=900, WPS=2.6;
+
+const S={voice:store.get('voice','Kore'),emo:store.get('emo','netral'),tempo:store.get('tempo','normal'),
+  gap:store.get('gap',0.25),scenes:[],rate:24000,busy:false,abort:null,stopAt:null,merged:null,url:null,peaks:null,total:0};
+const audio=new Audio(); audio.preload='auto';
+let preview=null;
+
+/* ---------- util ---------- */
+const sleep=(ms,sig)=>new Promise((res,rej)=>{const t=setTimeout(res,ms);sig&&sig.addEventListener('abort',()=>{clearTimeout(t);rej(new DOMException('Abort','AbortError'))},{once:true})});
+const fmt=t=>{t=Math.max(0,t||0);const m=Math.floor(t/60);return m+':'+(t-m*60).toFixed(1).padStart(4,'0')};
+const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+let toastT;function toast(msg,type){const t=$('#toast');t.textContent=msg;t.className='toast show '+(type||'');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),type==='err'?7000:3200)}
+const debounce=(f,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),ms)}};
+
+/* ---------- settings ---------- */
+const keyEl=$('#key'),modelEl=$('#model'),modelC=$('#modelCustom');
+function getKey(){return keyEl.value.trim()}
+function getModel(){return modelEl.value==='__custom'?(modelC.value.trim()||'gemini-3.8-flash-tts'):modelEl.value}
+function initSettings(){
+  const remember=store.get('remember',false);$('#remember').checked=remember;
+  if(remember){keyEl.value=store.get('key','')||''}
+  $('#keyOk').hidden=!getKey();$('#keyBox').open=!getKey();
+  const m=store.get('model','gemini-3.8-flash-tts');
+  if([...modelEl.options].some(o=>o.value===m))modelEl.value=m;else{modelEl.value='__custom';modelC.value=m;modelC.hidden=false}
+  $('#script').value=store.get('script','');$('#ctx').value=store.get('ctx','');$('#dict').value=store.get('dict','');
+  $('#gap').value=String(S.gap);if($('#gap').value!==String(S.gap)){$('#gap').value='0.25';S.gap=0.25}
+  if($('#dict').value.trim())$('#dictBox').open=true;
+}
+function saveKey(){
+  const k=getKey();$('#keyOk').hidden=!k;
+  if($('#remember').checked){store.set('remember',true);store.set('key',k)}else{store.set('remember',false);store.del('key')}
+}
+keyEl.addEventListener('input',debounce(saveKey,300));
+$('#remember').addEventListener('change',saveKey);
+$('#eye').addEventListener('click',()=>{keyEl.type=keyEl.type==='password'?'text':'password'});
+modelEl.addEventListener('change',()=>{modelC.hidden=modelEl.value!=='__custom';store.set('model',getModel())});
+modelC.addEventListener('input',debounce(()=>store.set('model',getModel()),300));
+$('#forget').addEventListener('click',()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('pv.')).forEach(k=>localStorage.removeItem(k))}catch{}keyEl.value='';$('#remember').checked=false;$('#keyOk').hidden=true;toast('Data tersimpan dihapus dari perangkat ini.','ok')});
+
+/* ---------- script / scenes ---------- */
+function splitLong(t){
+  if(t.length<=MAXCHARS)return[t];
+  const sents=t.match(/[^.!?…\n]+[.!?…]*\s*/g)||[t];const out=[];let cur='';
+  for(const s of sents){if(cur&&(cur+s).length>MAXCHARS){out.push(cur.trim());cur=''}cur+=s}
+  if(cur.trim())out.push(cur.trim());return out;
+}
+function parseScenes(){return $('#script').value.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean).flatMap(splitLong)}
+function applyDict(text){
+  const lines=$('#dict').value.split('\n');
+  for(const ln of lines){
+    const m=ln.match(/^\s*(.+?)\s*(?:=|->|→)\s*(.+?)\s*$/);if(!m)continue;
+    const re=new RegExp('(^|[^\\p{L}\\p{N}])'+esc(m[1])+'(?![\\p{L}\\p{N}])','giu');
+    text=text.replace(re,(_,p)=>p+m[2]);
+  }
+  return text;
+}
+function styleStr(){
+  const e=(EMOS.find(x=>x[0]===S.emo)||[])[2]||'';
+  return[e,TEMPO[S.tempo],$('#ctx').value.trim()].filter(Boolean).join('. ');
+}
+function updateStats(){
+  const t=$('#script').value;const words=(t.trim().match(/\S+/g)||[]).length;const sc=parseScenes().length;
+  $('#sWords').textContent=words+' kata';$('#sChars').textContent=t.length+' karakter';
+  const d=Math.round(words/WPS);$('#sDur').textContent='≈ '+d+' dtk';$('#sScenes').textContent=sc+' adegan';
+  $('#bInfo').textContent=sc+' adegan · ≈ '+d+' dtk';
+  if(!S.busy)$('#bSub').textContent=sc?(VOICES.find(v=>v[0]===S.voice)||[])[0]+' · '+(EMOS.find(x=>x[0]===S.emo)||[])[1]:'Isi naskah dulu';
+}
+function updateStyle(){const s=styleStr();$('#finalStyle').textContent='Gaya akhir: '+(s||'(kosong, suara netral)')}
+const saveDraft=debounce(()=>{store.set('script',$('#script').value);store.set('ctx',$('#ctx').value);store.set('dict',$('#dict').value)},400);
+$('#script').addEventListener('input',()=>{updateStats();saveDraft()});
+$('#ctx').addEventListener('input',()=>{updateStyle();saveDraft()});
+$('#dict').addEventListener('input',saveDraft);
+
+/* ---------- voice / emotion UI ---------- */
+function renderVoices(){
+  const q=$('#vSearch').value.trim().toLowerCase();const g=$('#vGrid');g.innerHTML='';
+  VOICES.filter(v=>!q||(v[0]+' '+v[1]).toLowerCase().includes(q)).forEach(([n,d])=>{
+    const b=document.createElement('button');b.type='button';b.className='v';b.setAttribute('aria-pressed',n===S.voice);
+    b.innerHTML='<b>'+n+'</b><span>'+d+'</span>';
+    b.onclick=()=>{S.voice=n;store.set('voice',n);setVoiceSummary();renderVoices();$('#vWrap').hidden=true;$('#vToggle').setAttribute('aria-expanded','false');$('#vToggle').textContent='Ganti';updateStats()};
+    g.appendChild(b);
+  });
+}
+function setVoiceSummary(){const v=VOICES.find(x=>x[0]===S.voice)||VOICES[3];$('#vName').textContent=v[0];$('#vDesc').textContent=v[1]}
+$('#vToggle').onclick=()=>{const h=$('#vWrap').hidden;$('#vWrap').hidden=!h;$('#vToggle').setAttribute('aria-expanded',h);$('#vToggle').textContent=h?'Tutup':'Ganti'};
+$('#vSearch').addEventListener('input',renderVoices);
+function renderEmo(){
+  const c=$('#emo');c.innerHTML='';
+  EMOS.forEach(([id,l])=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=l;b.setAttribute('aria-pressed',id===S.emo);
+    b.onclick=()=>{S.emo=id;store.set('emo',id);renderEmo();updateStyle();updateStats()};c.appendChild(b)});
+}
+document.querySelectorAll('#tempo button').forEach(b=>{
+  b.onclick=()=>{S.tempo=b.dataset.v;store.set('tempo',S.tempo);syncTempo();updateStyle()};
+});
+function syncTempo(){document.querySelectorAll('#tempo button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.tempo))}
+function renderTags(){
+  const c=$('#tags');
+  TAGS.forEach(([l,t])=>{const b=document.createElement('button');b.type='button';b.className='chip tag';b.textContent=l;
+    b.onmousedown=e=>e.preventDefault();
+    b.onclick=()=>{const ta=$('#script');const a=ta.selectionStart??ta.value.length,z=ta.selectionEnd??a;
+      const pre=ta.value.slice(0,a),post=ta.value.slice(z);const ins=(pre&&!/\s$/.test(pre)?' ':'')+t+(post&&!/^\s/.test(post)?' ':'');
+      ta.value=pre+ins+post;const p=pre.length+ins.length;ta.focus();ta.setSelectionRange(p,p);updateStats();saveDraft()};
+    c.appendChild(b)});
+}
+
+/* ---------- audio helpers ---------- */
+function findAudio(o){
+  let r=null;
+  (function w(x){
+    if(!x||typeof x!=='object')return;
+    if(typeof x.data==='string'&&x.data.length>100&&(x.type==='audio'||/audio/.test(x.mime_type||x.mimeType||'')))r=x.data;
+    const il=x.inlineData||x.inline_data;if(il&&typeof il.data==='string')r=il.data;
+    for(const k in x)w(x[k]);
+  })(o);
+  return r;
+}
+function decodeAudio(b64){
+  const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  let rate=24000,off=0,len=u.length;
+  if(u.length>44&&String.fromCharCode(u[0],u[1],u[2],u[3])==='RIFF'){
+    const dv=new DataView(u.buffer);let p=12;
+    while(p+8<=u.length){
+      const id=String.fromCharCode(u[p],u[p+1],u[p+2],u[p+3]);const sz=dv.getUint32(p+4,true);
+      if(id==='fmt ')rate=dv.getUint32(p+12,true);
+      if(id==='data'){off=p+8;len=(sz>0&&sz<=u.length-off)?sz:u.length-off;break}
+      p+=8+sz+(sz&1);
+    }
+  }
+  len&=~1;const pcm=new Int16Array(len/2);const dv2=new DataView(u.buffer,off,len);
+  for(let i=0;i<pcm.length;i++)pcm[i]=dv2.getInt16(i*2,true);
+  return{pcm,rate};
+}
+function wavBlob(pcm,rate){
+  const n=pcm.length,buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++)v.setInt16(44+i*2,pcm[i],true);
+  return new Blob([buf],{type:'audio/wav'});
+}
+
+/* ---------- API ---------- */
+const API='https://generativelanguage.googleapis.com/v1beta/interactions';
+function httpErr(st,msg){
+  const m=msg||'';
+  if(st===400&&/api key/i.test(m))return new Error('API key tidak valid. Periksa lagi key kamu.');
+  if(st===400)return new Error('Permintaan ditolak Google: '+m.slice(0,160));
+  if(st===401||st===403)return new Error('API key ditolak atau belum punya akses ke model ini.');
+  if(st===404)return new Error('Model tidak ditemukan. Ganti model di bagian "API key & model".');
+  if(st===429)return new Error('Limit/kuota Gemini tercapai. Tunggu sekitar 1 menit lalu klik Ulang.');
+  return new Error('Server Google bermasalah ('+st+'). '+m.slice(0,120));
+}
+async function tts(text,style,voice,signal,onWait){
+  const key=getKey();
+  const content={type:'text',text};
+  if(style)content.annotations=[{type:'speech_metadata',style}];
+  const body={model:getModel(),input:[{type:'user_input',content:[content]}],response_format:{type:'audio'},generation_config:{speech_config:[{voice}]}};
+  let last;
+  for(let a=0;a<3;a++){
+    let res;
+    try{res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal})}
+    catch(e){if(e.name==='AbortError')throw e;last=new Error('Tidak bisa terhubung ke Google. Cek koneksi internet.');if(a<2){onWait&&onWait('Koneksi gagal, mencoba lagi…');await sleep(1500*(a+1),signal);continue}throw last}
+    if(res.ok){
+      const j=await res.json();const au=findAudio(j);
+      if(!au)throw new Error('Respons tidak berisi audio. Coba model lain atau kosongkan gaya.');
+      return decodeAudio(au);
+    }
+    let msg='';try{msg=(await res.json()).error?.message||''}catch{}
+    last=httpErr(res.status,msg);
+    if((res.status===429||res.status>=500)&&a<2){onWait&&onWait('Menunggu limit Google, mencoba lagi…');await sleep(5000*(a+1),signal);continue}
+    throw last;
+  }
+  throw last;
+}
+
+/* ---------- generate ---------- */
+function needKey(){if(getKey())return false;$('#keyBox').open=true;$('#keyCard').scrollIntoView({block:'center'});toast('Masukkan API key Gemini dulu.','err');return true}
+function setBusy(b){S.busy=b;$('#goTxt').textContent=b?'Batal':(S.scenes.length?'Generate ulang':'Generate');if(!b){$('#go').style.setProperty('--p','0%');updateStats()}}
+async function genScene(i,onWait){
+  const sc=S.scenes[i];sc.busy=true;sc.err=null;sc.wait='';sceneUI(i);
+  try{
+    const {pcm,rate}=await tts(applyDict($('#scenes').querySelectorAll('textarea')[i]?.value||sc.text),styleStr(),S.voice,S.abort&&S.abort.signal,w=>{sc.wait=w;sceneUI(i)});
+    sc.pcm=pcm;S.rate=rate;
+  }catch(e){sc.err=e.name==='AbortError'?'Dibatalkan.':e.message}
+  sc.busy=false;sc.wait='';rebuild();
+}
+async function generateAll(){
+  if(S.busy){S.abort&&S.abort.abort();return}
+  if(needKey())return;
+  const parts=parseScenes();if(!parts.length){toast('Naskah masih kosong.','err');$('#script').focus();return}
+  if(audio&&!audio.paused)audio.pause();
+  S.scenes=parts.map(t=>({text:t,pcm:null,err:null,busy:false,start:0,dur:0}));
+  buildScenesUI();$('#result').hidden=false;rebuild();
+  S.abort=new AbortController();setBusy(true);
+  $('#result').scrollIntoView({block:'start'});
+  try{
+    for(let i=0;i<S.scenes.length;i++){
+      $('#bSub').textContent='Adegan '+(i+1)+' dari '+S.scenes.length;
+      $('#go').style.setProperty('--p',(i/S.scenes.length*100)+'%');
+      await genScene(i);
+      if(S.scenes[i].err)break;
+    }
+  }finally{
+    const done=S.scenes.every(s=>s.pcm);setBusy(false);rebuild();
+    if(done)toast('Selesai. Putar untuk cek sinkron, lalu unduh.','ok');
+    else{const e=S.scenes.find(s=>s.err);toast(e?e.err:'Belum semua adegan selesai.','err')}
+  }
+}
+async function redoScene(i){
+  if(S.busy||needKey())return;
+  S.abort=new AbortController();S.busy=true;
+  const wasPlaying=!audio.paused;audio.pause();
+  await genScene(i);S.busy=false;
+  if(S.scenes[i].err)toast(S.scenes[i].err,'err');
+  else{toast('Adegan '+(i+1)+' diperbarui.','ok');playScene(i)}
+}
+$('#go').addEventListener('click',generateAll);
+
+/* ---------- merged audio + UI ---------- */
+function rebuild(){
+  const rate=S.rate,gapN=Math.round(S.gap*rate);let t=0;const ready=S.scenes.filter(s=>s.pcm);
+  let total=0;ready.forEach((s,k)=>{total+=s.pcm.length+(k<ready.length-1?gapN:0)});
+  const out=new Int16Array(total);let p=0;
+  S.scenes.forEach(s=>{if(!s.pcm)return;s.start=p/rate;out.set(s.pcm,p);p+=s.pcm.length;s.dur=s.pcm.length/rate;p+=gapN;});
+  S.merged=out;S.total=out.length/rate;
+  const wasT=audio.currentTime||0,wasP=!audio.paused;
+  if(S.url){URL.revokeObjectURL(S.url);S.url=null}
+  if(out.length){S.url=URL.createObjectURL(wavBlob(out,rate));audio.src=S.url;try{audio.currentTime=Math.min(wasT,S.total)}catch{}}
+  // peaks
+  const N=180;S.peaks=new Float32Array(N);
+  if(out.length){const win=Math.max(1,Math.floor(out.length/N));let mx=1;
+    for(let b=0;b<N;b++){let m=0;const a=b*win,z=Math.min(out.length,a+win);for(let i=a;i<z;i+=4){const v=Math.abs(out[i]);if(v>m)m=v}S.peaks[b]=m;if(m>mx)mx=m}
+    for(let b=0;b<N;b++)S.peaks[b]/=mx}
+  buildTimeline();S.scenes.forEach((_,i)=>sceneUI(i));draw();updateTime();
+  const all=S.scenes.length&&S.scenes.every(s=>s.pcm);
+  $('#dl').disabled=!all;$('#copyT').disabled=!all;$('#play').disabled=!S.total;
+}
+function buildTimeline(){
+  const tl=$('#tl');tl.innerHTML='';
+  S.scenes.forEach((s,i)=>{if(!s.pcm)return;const c=COLORS[i%COLORS.length];const b=document.createElement('button');b.type='button';
+    b.style.flex=Math.max(s.dur,.5)+' 1 0';b.style.color=c;b.style.borderColor=c;b.style.background='color-mix(in srgb,'+c+' 18%,transparent)';
+    b.textContent='A'+(i+1);b.setAttribute('aria-label','Putar adegan '+(i+1));b.onclick=()=>playScene(i);tl.appendChild(b)});
+}
+const ICO={play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',pause:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
+  redo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
+  dl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>'};
+function buildScenesUI(){
+  const box=$('#scenes');box.innerHTML='';
+  S.scenes.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='scene';d.id='sc'+i;
+    d.innerHTML='<div class="top"><span class="dot" style="background:'+COLORS[i%COLORS.length]+'"></span><b>Adegan '+(i+1)+'</b><span class="t"></span>'+
+      '<button class="ib" data-a="play" aria-label="Putar adegan">'+ICO.play+'</button><button class="ib" data-a="redo" aria-label="Generate ulang adegan">'+ICO.redo+'</button><button class="ib" data-a="dl" aria-label="Unduh adegan">'+ICO.dl+'</button></div>'+
+      '<textarea spellcheck="false"></textarea><div class="st"></div>';
+    d.querySelector('textarea').value=s.text;
+    d.querySelector('[data-a=play]').onclick=()=>playScene(i);
+    d.querySelector('[data-a=redo]').onclick=()=>redoScene(i);
+    d.querySelector('[data-a=dl]').onclick=()=>{if(!s.pcm)return;saveBlob(wavBlob(s.pcm,S.rate),($('#fname').value.trim()||'naskah')+'-adegan'+(i+1)+'.wav')};
+    box.appendChild(d);
+  });
+}
+function sceneUI(i){
+  const s=S.scenes[i],d=$('#sc'+i);if(!d)return;
+  const st=d.querySelector('.st');
+  if(s.busy){st.className='st go';st.innerHTML='<span class="spin"></span>'+(s.wait||'Menghasilkan suara…')}
+  else if(s.err){st.className='st err';st.textContent=s.err}
+  else if(s.pcm){st.className='st';st.textContent='Siap · '+fmt(s.start)+' – '+fmt(s.start+s.dur)+' · '+s.dur.toFixed(1)+' dtk'}
+  else{st.className='st';st.textContent='Menunggu giliran'}
+  d.querySelector('[data-a=play]').disabled=!s.pcm;d.querySelector('[data-a=dl]').disabled=!s.pcm;
+  d.querySelector('[data-a=redo]').disabled=s.busy||(S.busy&&!s.err&&!s.pcm&&false);
+}
+
+/* ---------- player / waveform ---------- */
+const cv=$('#wave'),ctx2=cv.getContext('2d');
+function draw(){
+  const box=$('#waveBox'),dpr=window.devicePixelRatio||1,w=box.clientWidth,h=box.clientHeight;
+  if(!w)return;if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr)}
+  ctx2.setTransform(dpr,0,0,dpr,0,0);ctx2.clearRect(0,0,w,h);
+  const N=S.peaks?S.peaks.length:0;if(!N||!S.total)return;
+  const bw=w/N,cur=audio.currentTime||0;
+  for(let b=0;b<N;b++){
+    const t=b/N*S.total;let si=S.scenes.findIndex(s=>s.pcm&&t>=s.start&&t<s.start+s.dur+S.gap);if(si<0)si=0;
+    ctx2.globalAlpha=t<=cur?1:.42;ctx2.fillStyle=COLORS[si%COLORS.length];
+    const bh=Math.max(2,S.peaks[b]*(h-14));ctx2.beginPath();ctx2.roundRect?ctx2.roundRect(b*bw+bw*.18,(h-bh)/2,bw*.64,bh,2):ctx2.rect(b*bw+bw*.18,(h-bh)/2,bw*.64,bh);ctx2.fill();
+  }
+  ctx2.globalAlpha=1;ctx2.fillStyle=getComputedStyle(document.body).color;ctx2.fillRect(Math.min(w-2,cur/S.total*w),0,2,h);
+}
+function updateTime(){$('#time').textContent=fmt(audio.currentTime)+' / '+fmt(S.total)}
+function setPlayIcon(){$('#icoPlay').outerHTML=audio.paused?'<svg id="icoPlay" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>':'<svg id="icoPlay" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>'}
+function tick(){draw();updateTime();if(S.stopAt!=null&&audio.currentTime>=S.stopAt){audio.pause();S.stopAt=null}if(!audio.paused)requestAnimationFrame(tick)}
+audio.addEventListener('play',()=>{setPlayIcon();requestAnimationFrame(tick)});
+audio.addEventListener('pause',()=>{setPlayIcon();draw();updateTime()});
+audio.addEventListener('ended',()=>{S.stopAt=null;setPlayIcon();draw();updateTime()});
+$('#play').onclick=()=>{if(!S.total)return;S.stopAt=null;if(audio.paused){if(audio.ended||audio.currentTime>=S.total-.05)audio.currentTime=0;audio.play().catch(()=>{})}else audio.pause()};
+function playScene(i){const s=S.scenes[i];if(!s||!s.pcm)return;audio.currentTime=s.start;S.stopAt=s.start+s.dur;audio.play().catch(()=>{})}
+function seekFrom(e){const r=$('#waveBox').getBoundingClientRect();const x=(e.clientX-r.left)/r.width;if(S.total){S.stopAt=null;audio.currentTime=Math.max(0,Math.min(S.total,x*S.total));draw();updateTime()}}
+let dragging=false;
+$('#waveBox').addEventListener('pointerdown',e=>{dragging=true;seekFrom(e)});
+window.addEventListener('pointermove',e=>{if(dragging)seekFrom(e)});
+window.addEventListener('pointerup',()=>dragging=false);
+window.addEventListener('resize',draw);
+
+/* ---------- download / copy ---------- */
+function saveBlob(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+$('#gap').addEventListener('change',e=>{S.gap=parseFloat(e.target.value);store.set('gap',S.gap);if(S.scenes.some(s=>s.pcm))rebuild()});
+$('#dl').onclick=()=>{if(!S.merged||!S.merged.length)return;const n=($('#fname').value.trim()||'naskah').replace(/[^\w\-. ]+/g,'_');saveBlob(wavBlob(S.merged,S.rate),n+'.wav');toast('File '+n+'.wav diunduh.','ok')};
+$('#copyT').onclick=async()=>{
+  const tx=S.scenes.map((s,i)=>'Adegan '+(i+1)+'  '+fmt(s.start)+' – '+fmt(s.start+s.dur)).join('\n')+'\nTotal  '+fmt(S.total);
+  try{await navigator.clipboard.writeText(tx)}catch{const t=document.createElement('textarea');t.value=tx;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch{}t.remove()}
+  toast('Waktu tiap adegan disalin.','ok');
+};
+
+/* ---------- voice test ---------- */
+$('#vTest').onclick=async()=>{
+  if(needKey())return;const b=$('#vTest');if(b.disabled)return;
+  const first=parseScenes()[0]||'Halo, ini contoh suara untuk videomu.';const sample=first.slice(0,140);
+  b.disabled=true;const old=b.innerHTML;b.innerHTML='<span class="spin"></span>';
+  try{const {pcm,rate}=await tts(applyDict(sample),styleStr(),S.voice);if(preview){preview.pause();URL.revokeObjectURL(preview.src)}
+    preview=new Audio(URL.createObjectURL(wavBlob(pcm,rate)));preview.play().catch(()=>{})}
+  catch(e){toast(e.message,'err')}
+  b.disabled=false;b.innerHTML=old;
+};
+
+/* ---------- init ---------- */
+initSettings();setVoiceSummary();renderVoices();renderEmo();syncTempo();renderTags();updateStats();updateStyle();
+</script>
+</body>
+</html>
