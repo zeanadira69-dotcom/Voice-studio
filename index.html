@@ -125,6 +125,11 @@ a{color:var(--acc)}
 .toast{position:fixed;left:18px;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:30;max-width:604px;margin:0 auto;
   background:var(--bg);box-shadow:var(--raise);border-left:4px solid var(--acc);border-radius:14px;padding:12px 15px;font-size:13.5px;display:none}
 .toast.show{display:block}.toast.err{border-left-color:var(--err)}.toast.ok{border-left-color:var(--ok)}
+.scene .src{color:var(--mut);font-size:13px;margin:0 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.scene label.f{margin:14px 0 8px}
+.scene input[type=text]{padding:11px 12px;border-radius:12px;box-shadow:var(--inset-s);font-size:15px}
+.scene .vd{font:11.5px var(--mono);color:var(--mut);white-space:nowrap}
+.scene .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 footer{color:var(--mut);font-size:12px;text-align:center;margin:26px 0 0}
 [hidden]{display:none!important}
 </style>
@@ -160,6 +165,9 @@ footer{color:var(--mut);font-size:12px;text-align:center;margin:26px 0 0}
           <option value="__custom">Model lain…</option>
         </select>
         <input id="modelCustom" type="text" placeholder="id model, contoh: gemini-3.8-flash-tts" style="margin-top:8px" hidden autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="sub"><label class="f" for="textModel">Model teks (rencana visual)</label>
+        <input id="textModel" type="text" value="gemini-3.8-flash" autocapitalize="off" spellcheck="false">
       </div>
       <div class="sub row"><button class="btn sm" id="forget" type="button">Hapus data tersimpan</button></div>
     </div>
@@ -236,12 +244,34 @@ footer{color:var(--mut);font-size:12px;text-align:center;margin:26px 0 0}
       <option value="0">0 dtk</option><option value="0.25">0.25</option><option value="0.5">0.5</option><option value="0.8">0.8</option>
     </select>
   </div>
-  <div class="row sub" style="flex-wrap:wrap">
-    <input id="fname" type="text" value="naskah" style="flex:1;min-width:120px" aria-label="Nama file" autocapitalize="off" spellcheck="false">
-    <button class="btn pri" id="dl" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Unduh WAV</button>
-    <button class="btn" id="copyT" type="button">Salin waktu</button>
+  <div class="sub"><label class="f" for="fname">Nama file</label>
+    <input id="fname" type="text" value="naskah" autocapitalize="off" spellcheck="false"></div>
+  <div class="row" style="flex-wrap:wrap;margin-top:14px">
+    <button class="btn pri" id="dlMp3" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg><span>Unduh MP3</span></button>
+    <button class="btn" id="dl" type="button">Unduh WAV</button>
   </div>
+  <div class="row" style="flex-wrap:wrap;margin-top:12px">
+    <button class="btn sm" id="copyT" type="button">Salin durasi gambar</button>
+    <button class="btn sm" id="copyS" type="button">Salin teks adegan</button>
+  </div>
+  <p class="hint">Di CapCut: impor audionya, lalu atur panjang tiap gambar sesuai "durasi gambar". Totalnya sama dengan panjang audio.</p>
   <div id="scenes"></div>
+</section>
+
+<!-- Visual -->
+<section class="card" id="vizCard">
+  <div class="head"><span class="pill">Visual</span><h2>Rencana visual · 9:16</h2></div>
+  <label class="f">Gaya visual</label>
+  <div class="chips" id="vpre"></div>
+  <textarea id="vstyle" class="sm" style="margin-top:14px" placeholder="Contoh: realistis sinematik, alat berat konstruksi, pencahayaan dramatis"></textarea>
+  <div class="row sub" style="flex-wrap:wrap"><button class="btn pri" id="plan" type="button">Rencanakan visual</button></div>
+  <p class="hint">Gemini membaca naskah, lalu menyusun ide visual, prompt gambar, dan kata kunci footage untuk tiap adegan. Satu request untuk semua adegan. Semuanya bisa kamu edit.</p>
+  <div class="final" id="vizStale" hidden>Naskah berubah sejak rencana dibuat. Rencanakan ulang supaya sesuai.</div>
+  <div id="vizList"></div>
+  <div class="row" id="vizAct" style="flex-wrap:wrap;margin-top:16px" hidden>
+    <button class="btn sm" id="copyP" type="button">Salin semua prompt</button>
+    <button class="btn sm" id="copyK" type="button">Salin kata kunci</button>
+  </div>
 </section>
 
 <footer>Suara dihasilkan AI. Gunakan sesuai kebijakan platform tempat kamu mengunggah.</footer>
@@ -270,7 +300,7 @@ const COLORS=["#3b82f6","#06b6d4","#8b5cf6","#10b981","#f59e0b","#ec4899"];
 const MAXCHARS=900, WPS=2.6;
 
 const S={gf:store.get('gf','all'),voice:store.get('voice','Kore'),emo:store.get('emo','netral'),tempo:store.get('tempo','normal'),
-  gap:store.get('gap',0.25),scenes:[],rate:24000,busy:false,abort:null,stopAt:null,merged:null,url:null,peaks:null,total:0};
+  gap:store.get('gap',0.25),viz:store.get('viz',[]),vizSrc:store.get('vizSrc',''),planning:false,scenes:[],rate:24000,busy:false,abort:null,stopAt:null,merged:null,url:null,peaks:null,total:0};
 const audio=new Audio(); audio.preload='auto';
 let preview=null;
 
@@ -284,6 +314,7 @@ const debounce=(f,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(
 /* ---------- settings ---------- */
 const keyEl=$('#key'),modelEl=$('#model'),modelC=$('#modelCustom');
 function getKey(){return keyEl.value.trim()}
+function getTextModel(){return ($('#textModel').value.trim()||'gemini-3.8-flash')}
 function getModel(){return modelEl.value==='__custom'?(modelC.value.trim()||'gemini-3.8-flash-tts'):modelEl.value}
 function initSettings(){
   const remember=store.get('remember',false);$('#remember').checked=remember;
@@ -291,6 +322,7 @@ function initSettings(){
   $('#keyOk').hidden=!getKey();$('#keyBox').open=!getKey();
   const m=store.get('model','gemini-3.8-flash-tts');
   if([...modelEl.options].some(o=>o.value===m))modelEl.value=m;else{modelEl.value='__custom';modelC.value=m;modelC.hidden=false}
+  $('#textModel').value=store.get('textModel','gemini-3.8-flash');$('#vstyle').value=store.get('vstyle','');
   $('#script').value=store.get('script','');$('#ctx').value=store.get('ctx','');$('#dict').value=store.get('dict','');
   $('#gap').value=String(S.gap);if($('#gap').value!==String(S.gap)){$('#gap').value='0.25';S.gap=0.25}
   if($('#dict').value.trim())$('#dictBox').open=true;
@@ -303,6 +335,7 @@ keyEl.addEventListener('input',debounce(saveKey,300));
 $('#remember').addEventListener('change',saveKey);
 $('#eye').addEventListener('click',()=>{keyEl.type=keyEl.type==='password'?'text':'password'});
 modelEl.addEventListener('change',()=>{modelC.hidden=modelEl.value!=='__custom';store.set('model',getModel())});
+$('#textModel').addEventListener('input',debounce(()=>store.set('textModel',getTextModel()),300));
 modelC.addEventListener('input',debounce(()=>store.set('model',getModel()),300));
 $('#forget').addEventListener('click',()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('pv.')).forEach(k=>localStorage.removeItem(k))}catch{}keyEl.value='';$('#remember').checked=false;$('#keyOk').hidden=true;toast('Data tersimpan dihapus dari perangkat ini.','ok')});
 
@@ -332,6 +365,7 @@ function updateStats(){
   $('#sWords').textContent=words+' kata';$('#sChars').textContent=t.length+' karakter';
   const d=Math.round(words/WPS);$('#sDur').textContent='≈ '+d+' dtk';$('#sScenes').textContent=sc+' adegan';
   $('#bInfo').textContent=sc+' adegan · ≈ '+d+' dtk';
+  $('#vizStale').hidden=!(S.viz.length&&S.vizSrc!==JSON.stringify(parseScenes()));
   if(!S.busy)$('#bSub').textContent=sc?(VOICES.find(v=>v[0]===S.voice)||[])[0]+' · '+(EMOS.find(x=>x[0]===S.emo)||[])[1]:'Isi naskah dulu';
 }
 function updateStyle(){const s=styleStr();$('#finalStyle').textContent='Gaya akhir: '+(s||'(kosong, suara netral)')}
@@ -413,7 +447,8 @@ function wavBlob(pcm,rate){
 
 /* ---------- API ---------- */
 const API='https://generativelanguage.googleapis.com/v1beta/interactions';
-function httpErr(st,msg){
+function httpErr(st,msg){const e=httpErr0(st,msg);e.status=st;e.keyBad=st===400&&/api key/i.test(msg||'');return e}
+function httpErr0(st,msg){
   const m=msg||'';
   if(st===400&&/api key/i.test(m))return new Error('API key tidak valid. Periksa lagi key kamu.');
   if(st===400)return new Error('Permintaan ditolak Google: '+m.slice(0,160));
@@ -422,27 +457,27 @@ function httpErr(st,msg){
   if(st===429)return new Error('Limit/kuota Gemini tercapai. Tunggu sekitar 1 menit lalu klik Ulang.');
   return new Error('Server Google bermasalah ('+st+'). '+m.slice(0,120));
 }
-async function tts(text,style,voice,signal,onWait){
-  const key=getKey();
-  const content={type:'text',text};
-  if(style)content.annotations=[{type:'speech_metadata',style}];
-  const body={model:getModel(),input:[{type:'user_input',content:[content]}],response_format:{type:'audio'},generation_config:{speech_config:[{voice}]}};
-  let last;
+async function callApi(url,body,signal,onWait){
+  const key=getKey();let last;
   for(let a=0;a<3;a++){
     let res;
-    try{res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal})}
+    try{res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal})}
     catch(e){if(e.name==='AbortError')throw e;last=new Error('Tidak bisa terhubung ke Google. Cek koneksi internet.');if(a<2){onWait&&onWait('Koneksi gagal, mencoba lagi…');await sleep(1500*(a+1),signal);continue}throw last}
-    if(res.ok){
-      const j=await res.json();const au=findAudio(j);
-      if(!au)throw new Error('Respons tidak berisi audio. Coba model lain atau kosongkan gaya.');
-      return decodeAudio(au);
-    }
+    if(res.ok)return await res.json();
     let msg='';try{msg=(await res.json()).error?.message||''}catch{}
     last=httpErr(res.status,msg);
     if((res.status===429||res.status>=500)&&a<2){onWait&&onWait('Menunggu limit Google, mencoba lagi…');await sleep(5000*(a+1),signal);continue}
     throw last;
   }
   throw last;
+}
+async function tts(text,style,voice,signal,onWait){
+  const content={type:'text',text};
+  if(style)content.annotations=[{type:'speech_metadata',style}];
+  const body={model:getModel(),input:[{type:'user_input',content:[content]}],response_format:{type:'audio'},generation_config:{speech_config:[{voice}]}};
+  const j=await callApi(API,body,signal,onWait);const au=findAudio(j);
+  if(!au)throw new Error('Respons tidak berisi audio. Coba model lain atau kosongkan gaya.');
+  return decodeAudio(au);
 }
 
 /* ---------- generate ---------- */
@@ -451,7 +486,7 @@ function setBusy(b){S.busy=b;$('#goTxt').textContent=b?'Batal':(S.scenes.length?
 async function genScene(i,onWait){
   const sc=S.scenes[i];sc.busy=true;sc.err=null;sc.wait='';sceneUI(i);
   try{
-    const {pcm,rate}=await tts(applyDict($('#scenes').querySelectorAll('textarea')[i]?.value||sc.text),styleStr(),S.voice,S.abort&&S.abort.signal,w=>{sc.wait=w;sceneUI(i)});
+    const {pcm,rate}=await tts(applyDict(($('#sc'+i+' textarea')||{}).value||sc.text),styleStr(),S.voice,S.abort&&S.abort.signal,w=>{sc.wait=w;sceneUI(i)});
     sc.pcm=pcm;S.rate=rate;
   }catch(e){sc.err=e.name==='AbortError'?'Dibatalkan.':e.message}
   sc.busy=false;sc.wait='';rebuild();
@@ -505,7 +540,7 @@ function rebuild(){
     for(let b=0;b<N;b++)S.peaks[b]/=mx}
   buildTimeline();S.scenes.forEach((_,i)=>sceneUI(i));draw();updateTime();
   const all=S.scenes.length&&S.scenes.every(s=>s.pcm);
-  $('#dl').disabled=!all;$('#copyT').disabled=!all;$('#play').disabled=!S.total;
+  $('#dl').disabled=!all;$('#dlMp3').disabled=!all;$('#copyT').disabled=!all;$('#copyS').disabled=!S.scenes.length;$('#play').disabled=!S.total;updateVizDur();
 }
 function buildTimeline(){
   const tl=$('#tl');tl.innerHTML='';
@@ -529,12 +564,22 @@ function buildScenesUI(){
     box.appendChild(d);
   });
 }
+function clipDur(i){
+  const s=S.scenes[i];if(!s||!s.pcm)return null;let nx=null;
+  for(let k=i+1;k<S.scenes.length;k++){if(S.scenes[k].pcm){nx=S.scenes[k];break}}
+  return nx?nx.start-s.start:s.dur;
+}
+function clipFmt(i){
+  const s=S.scenes[i];if(!s||!s.pcm)return '';let end=S.total;
+  for(let k=i+1;k<S.scenes.length;k++){if(S.scenes[k].pcm){end=S.scenes[k].start;break}}
+  return ((Math.round(end*10)-Math.round(s.start*10))/10).toFixed(1);
+}
 function sceneUI(i){
   const s=S.scenes[i],d=$('#sc'+i);if(!d)return;
   const st=d.querySelector('.st');
   if(s.busy){st.className='st go';st.innerHTML='<span class="spin"></span>'+(s.wait||'Menghasilkan suara…')}
   else if(s.err){st.className='st err';st.textContent=s.err}
-  else if(s.pcm){st.className='st';st.textContent='Siap · '+fmt(s.start)+' – '+fmt(s.start+s.dur)+' · '+s.dur.toFixed(1)+' dtk'}
+  else if(s.pcm){st.className='st';st.textContent='Siap · mulai '+fmt(s.start)+' · suara '+s.dur.toFixed(1)+' dtk · gambar '+clipFmt(i)+' dtk'}
   else{st.className='st';st.textContent='Menunggu giliran'}
   d.querySelector('[data-a=play]').disabled=!s.pcm;d.querySelector('[data-a=dl]').disabled=!s.pcm;
   d.querySelector('[data-a=redo]').disabled=s.busy||(S.busy&&!s.err&&!s.pcm&&false);
@@ -574,10 +619,42 @@ window.addEventListener('resize',draw);
 function saveBlob(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
 $('#gap').addEventListener('change',e=>{S.gap=parseFloat(e.target.value);store.set('gap',S.gap);if(S.scenes.some(s=>s.pcm))rebuild()});
 $('#dl').onclick=()=>{if(!S.merged||!S.merged.length)return;const n=($('#fname').value.trim()||'naskah').replace(/[^\w\-. ]+/g,'_');saveBlob(wavBlob(S.merged,S.rate),n+'.wav');toast('File '+n+'.wav diunduh.','ok')};
-$('#copyT').onclick=async()=>{
-  const tx=S.scenes.map((s,i)=>'Adegan '+(i+1)+'  '+fmt(s.start)+' – '+fmt(s.start+s.dur)).join('\n')+'\nTotal  '+fmt(S.total);
+async function copyText(tx,msg){
   try{await navigator.clipboard.writeText(tx)}catch{const t=document.createElement('textarea');t.value=tx;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch{}t.remove()}
-  toast('Waktu tiap adegan disalin.','ok');
+  toast(msg,'ok');
+}
+$('#copyT').onclick=()=>{
+  if(!S.scenes.every(s=>s.pcm))return;
+  copyText(S.scenes.map((s,i)=>'Adegan '+(i+1)+': '+clipFmt(i)+' dtk (mulai '+fmt(s.start)+')').join('\n')+'\nTotal: '+fmt(S.total),'Durasi gambar tiap adegan disalin.');
+};
+$('#copyS').onclick=()=>{
+  const ta=[...document.querySelectorAll('#scenes .scene textarea')].map(t=>t.value.trim());
+  const arr=ta.length?ta:parseScenes();if(!arr.length)return;
+  copyText(arr.map((t,i)=>(i+1)+'. '+t).join('\n\n'),'Teks adegan disalin.');
+};
+/* ---------- MP3 (lamejs dimuat saat dibutuhkan) ---------- */
+let lameP=null;
+function loadLame(){
+  if(window.lamejs)return Promise.resolve();
+  return lameP||(lameP=new Promise((res,rej)=>{
+    const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';
+    sc.onload=()=>window.lamejs?res():(lameP=null,rej(new Error('lamejs')));sc.onerror=()=>{lameP=null;rej(new Error('lamejs'))};document.head.appendChild(sc);
+  }));
+}
+async function mp3Blob(pcm,rate){
+  await loadLame();const enc=new lamejs.Mp3Encoder(1,rate,128);const out=[];const step=1152*8;
+  for(let i=0,n=0;i<pcm.length;i+=step,n++){
+    const b=enc.encodeBuffer(pcm.subarray(i,i+step));if(b.length)out.push(new Uint8Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.length)));
+    if(n%40===39)await new Promise(r=>setTimeout(r));
+  }
+  const f=enc.flush();if(f.length)out.push(new Uint8Array(f.buffer.slice(f.byteOffset,f.byteOffset+f.length)));
+  return new Blob(out,{type:'audio/mpeg'});
+}
+$('#dlMp3').onclick=async()=>{
+  if(!S.merged||!S.merged.length)return;const b=$('#dlMp3'),lab=b.querySelector('span');b.disabled=true;lab.textContent='Menyiapkan MP3…';
+  try{const n=($('#fname').value.trim()||'naskah').replace(/[^\w\-. ]+/g,'_');saveBlob(await mp3Blob(S.merged,S.rate),n+'.mp3');toast('File '+n+'.mp3 diunduh.','ok')}
+  catch(e){toast('Encoder MP3 gagal dimuat (perlu internet). Pakai Unduh WAV dulu.','err')}
+  lab.textContent='Unduh MP3';b.disabled=!S.scenes.every(s=>s.pcm);
 };
 
 /* ---------- voice test ---------- */
@@ -591,8 +668,86 @@ $('#vTest').onclick=async()=>{
   b.disabled=false;b.innerHTML=old;
 };
 
+
+/* ---------- visual plan ---------- */
+const VPRE=[["Sinematik","photorealistic, cinematic lighting, shallow depth of field"],["3D render","clean 3D render, soft studio lighting, high detail"],["Ilustrasi flat","flat vector illustration, bold shapes, limited color palette"],["Infografis gelap","dark minimal infographic style, glowing accents, clean icons"]];
+function renderVpre(){
+  const c=$('#vpre');c.innerHTML='';
+  VPRE.forEach(([l,t])=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=l;b.setAttribute('aria-pressed',$('#vstyle').value.trim()===t);
+    b.onclick=()=>{$('#vstyle').value=t;store.set('vstyle',t);renderVpre()};c.appendChild(b)});
+}
+$('#vstyle').addEventListener('input',debounce(()=>{store.set('vstyle',$('#vstyle').value);renderVpre()},300));
+const str=x=>typeof x==='string'?x.trim():(x==null?'':String(x));
+function parsePlan(txt){
+  let t=txt.trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');let v;
+  try{v=JSON.parse(t)}catch{const a=t.indexOf('['),b=t.lastIndexOf(']');if(a>=0&&b>a){try{v=JSON.parse(t.slice(a,b+1))}catch{}}}
+  if(v&&!Array.isArray(v))v=v.scenes||v.adegan||v.items||Object.values(v).find(Array.isArray);
+  if(!Array.isArray(v))throw new Error('Format jawaban Gemini tidak terbaca. Coba rencanakan lagi.');
+  return v.map(o=>({idea:str(o.idea??o.ide??o.visual),prompt:str(o.prompt??o.image_prompt),
+    kw:Array.isArray(o.keywords)?o.keywords.join(', '):str(o.keywords??o.kata_kunci),move:str(o.move??o.gerakan)}));
+}
+async function planVisual(texts,style,signal,onWait){
+  const list=texts.map((t,i)=>(i+1)+'. '+t.replace(/\s+/g,' ')).join('\n');
+  const prompt='Kamu perencana visual untuk video vertikal 9:16 (YouTube Shorts). Untuk setiap adegan naskah di bawah, buat rencana visual.\n'+
+   'Balas HANYA dengan JSON array berisi tepat '+texts.length+' objek, urut sesuai adegan. Tiap objek memiliki kunci:\n'+
+   '- "idea": ide visual singkat dalam bahasa Indonesia (maksimal 2 kalimat).\n'+
+   '- "prompt": prompt untuk generator gambar dalam bahasa Inggris. Komposisi vertikal 9:16, jelaskan subjek, aksi, lokasi, pencahayaan, dan sudut kamera. Tanpa teks, tulisan, atau logo di dalam gambar. Ulangi deskripsi gaya yang sama di setiap prompt supaya konsisten.\n'+
+   '- "keywords": 2 sampai 4 kata kunci bahasa Inggris untuk mencari footage stok, dipisah koma.\n'+
+   '- "move": satu gerakan sederhana yang bisa dibuat di CapCut, misalnya zoom in pelan atau geser kiri ke kanan.\n'+
+   'Jangan menampilkan orang nyata yang dikenal.\n'+
+   'Gaya visual: '+(style||'realistis sinematik, pencahayaan natural')+'\n\nNaskah per adegan:\n'+list;
+  const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(getTextModel())+':generateContent';
+  const mk=json=>({contents:[{parts:[{text:prompt}]}],...(json?{generationConfig:{responseMimeType:'application/json'}}:{})});
+  let j;
+  try{j=await callApi(url,mk(true),signal,onWait)}
+  catch(e){if(e.status===400&&!e.keyBad)j=await callApi(url,mk(false),signal,onWait);else throw e}
+  const txt=((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||'').join('');
+  if(!txt){const br=j.promptFeedback&&j.promptFeedback.blockReason;throw new Error(br?'Gemini menolak naskah ini ('+br+'). Ubah sedikit lalu coba lagi.':'Gemini tidak mengembalikan teks. Coba lagi atau ganti model teks.')}
+  return parsePlan(txt);
+}
+const saveViz=()=>{store.set('viz',S.viz);store.set('vizSrc',S.vizSrc)};
+const saveVizD=debounce(saveViz,400);
+function renderViz(){
+  const box=$('#vizList');box.innerHTML='';
+  S.viz.forEach((v,i)=>{
+    const d=document.createElement('div');d.className='scene';
+    d.innerHTML='<div class="top"><span class="dot" style="background:'+COLORS[i%COLORS.length]+'"></span><b>Adegan '+(i+1)+'</b><span class="vd"></span></div>'+
+      '<p class="src"></p>'+
+      '<label class="f">Ide visual</label><textarea data-f="idea" class="sm" style="min-height:72px"></textarea>'+
+      '<label class="f">Prompt gambar (9:16)</label><textarea data-f="prompt" class="sm" style="min-height:96px"></textarea>'+
+      '<label class="f">Kata kunci footage</label><input type="text" data-f="kw" autocapitalize="off" spellcheck="false">'+
+      '<label class="f">Gerakan di CapCut</label><input type="text" data-f="move">'+
+      '<div class="acts"><button class="btn sm" data-a="cp" type="button">Salin prompt</button><button class="btn sm" data-a="ck" type="button">Salin kata kunci</button></div>';
+    d.querySelector('.src').textContent=v.text;
+    d.querySelectorAll('[data-f]').forEach(el=>{el.value=v[el.dataset.f]||'';el.addEventListener('input',()=>{v[el.dataset.f]=el.value;saveVizD()})});
+    d.querySelector('[data-a=cp]').onclick=()=>copyText(v.prompt||'','Prompt adegan '+(i+1)+' disalin.');
+    d.querySelector('[data-a=ck]').onclick=()=>copyText(v.kw||'','Kata kunci adegan '+(i+1)+' disalin.');
+    box.appendChild(d);
+  });
+  $('#vizAct').hidden=!S.viz.length;updateVizDur();updateStats();
+}
+function updateVizDur(){
+  const ok=S.viz.length&&S.scenes.length===S.viz.length&&S.scenes.every(s=>s.pcm);
+  document.querySelectorAll('#vizList .vd').forEach((el,i)=>{el.textContent=ok?'gambar '+clipFmt(i)+' dtk':''});
+}
+$('#plan').onclick=async()=>{
+  if(S.planning||needKey())return;
+  const texts=parseScenes();if(!texts.length){toast('Naskah masih kosong.','err');$('#script').focus();return}
+  const b=$('#plan'),old=b.innerHTML;S.planning=true;b.disabled=true;b.innerHTML='<span class="spin"></span>Menyusun rencana…';
+  try{
+    const r=await planVisual(texts,$('#vstyle').value.trim(),null,w=>toast(w));
+    S.viz=texts.map((t,i)=>Object.assign({text:t,idea:'',prompt:'',kw:'',move:''},r[i]||{}));S.vizSrc=JSON.stringify(texts);saveViz();renderViz();
+    const miss=texts.length-r.length;
+    toast(miss>0?'Sebagian adegan belum terisi ('+r.length+' dari '+texts.length+'). Coba lagi.':'Rencana visual siap. Edit bila perlu.',miss>0?'err':'ok');
+    $('#vizList').scrollIntoView({block:'start'});
+  }catch(e){toast(e.message,'err')}
+  S.planning=false;b.disabled=false;b.innerHTML=old;
+};
+$('#copyP').onclick=()=>copyText(S.viz.map((v,i)=>(i+1)+'. '+v.prompt).join('\n\n'),'Semua prompt disalin.');
+$('#copyK').onclick=()=>copyText(S.viz.map((v,i)=>(i+1)+'. '+v.kw).join('\n'),'Semua kata kunci disalin.');
+
 /* ---------- init ---------- */
-initSettings();setVoiceSummary();syncGender();renderVoices();renderEmo();syncTempo();renderTags();updateStats();updateStyle();
+initSettings();renderVpre();renderViz();setVoiceSummary();syncGender();renderVoices();renderEmo();syncTempo();renderTags();updateStats();updateStyle();
 </script>
 </body>
 </html>
