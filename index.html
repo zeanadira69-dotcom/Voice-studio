@@ -85,7 +85,8 @@ button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-
 .v b{display:block;font-size:14px}.v span{color:var(--mut);font-size:12px}
 .v:active{box-shadow:var(--inset-s)}
 .v[aria-pressed=true]{background:var(--grad);color:#fff;box-shadow:0 6px 14px var(--glow)}
-.v[aria-pressed=true] span{color:rgba(255,255,255,.88)}
+.v em{display:block;margin-top:5px;font:700 10.5px var(--mono);font-style:normal;letter-spacing:.04em;color:var(--acc)}
+.v[aria-pressed=true] span,.v[aria-pressed=true] em{color:rgba(255,255,255,.9)}
 details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:34px}
 details>summary::-webkit-details-marker{display:none}
 .chev{margin-left:auto;width:16px;height:16px;transition:transform .2s;color:var(--mut)}
@@ -182,7 +183,8 @@ footer{color:var(--mut);font-size:12px;text-align:center;margin:26px 0 0}
     <button class="btn sm" id="vToggle" type="button" aria-expanded="false">Ganti</button>
   </div>
   <div id="vWrap" hidden>
-    <input id="vSearch" type="text" placeholder="Cari nama atau karakter suara…" style="margin-top:10px" autocomplete="off">
+    <div class="seg g4" id="vGender" style="margin-top:12px"><button type="button" data-v="all">Semua</button><button type="button" data-v="P">Pria</button><button type="button" data-v="W">Wanita</button></div>
+    <input id="vSearch" type="text" placeholder="Cari nama atau karakter suara…" style="margin-top:12px" autocomplete="off">
     <div class="vgrid" id="vGrid"></div>
   </div>
 </section>
@@ -259,14 +261,15 @@ const store={
   set(k,v){try{localStorage.setItem('pv.'+k,JSON.stringify(v))}catch{}},
   del(k){try{localStorage.removeItem('pv.'+k)}catch{}}
 };
-const VOICES=[["Zephyr","Cerah"],["Puck","Ceria"],["Charon","Informatif"],["Kore","Tegas"],["Fenrir","Bersemangat"],["Leda","Muda"],["Orus","Tegas"],["Aoede","Ringan"],["Callirrhoe","Santai"],["Autonoe","Cerah"],["Enceladus","Berembus"],["Iapetus","Jernih"],["Umbriel","Santai"],["Algieba","Halus"],["Despina","Halus"],["Erinome","Jernih"],["Algenib","Serak"],["Rasalgethi","Informatif"],["Laomedeia","Ceria"],["Achernar","Lembut"],["Alnilam","Tegas"],["Schedar","Rata"],["Gacrux","Dewasa"],["Pulcherrima","Lugas"],["Achird","Ramah"],["Zubenelgenubi","Kasual"],["Vindemiatrix","Lembut"],["Sadachbia","Hidup"],["Sadaltager","Berpengetahuan"],["Sulafat","Hangat"]];
+const VOICES=[["Zephyr","Cerah","W"],["Puck","Ceria","P"],["Charon","Informatif","P"],["Kore","Tegas","W"],["Fenrir","Bersemangat","P"],["Leda","Muda","W"],["Orus","Tegas","P"],["Aoede","Ringan","W"],["Callirrhoe","Santai","W"],["Autonoe","Cerah","W"],["Enceladus","Berembus","P"],["Iapetus","Jernih","P"],["Umbriel","Santai","P"],["Algieba","Halus","P"],["Despina","Halus","W"],["Erinome","Jernih","W"],["Algenib","Serak","P"],["Rasalgethi","Informatif","P"],["Laomedeia","Ceria","W"],["Achernar","Lembut","W"],["Alnilam","Tegas","P"],["Schedar","Rata","P"],["Gacrux","Dewasa","W"],["Pulcherrima","Lugas","W"],["Achird","Ramah","P"],["Zubenelgenubi","Kasual","P"],["Vindemiatrix","Lembut","W"],["Sadachbia","Hidup","P"],["Sadaltager","Berpengetahuan","P"],["Sulafat","Hangat","W"]];
+const GEN={W:"Wanita",P:"Pria"};
 const EMOS=[["netral","Netral",""],["ceria","Ceria","cheerful and upbeat"],["serius","Serius","serious and authoritative"],["penasaran","Penasaran","curious and intrigued"],["bisik","Bisikan","whispered and intimate"],["santai","Santai","relaxed and conversational"],["dramatis","Dramatis","dramatic, building tension"],["tegas","Tegas","firm and confident"],["hangat","Hangat","warm and friendly"],["antusias","Antusias","excited and energetic"]];
 const TAGS=[["Jeda pendek","<short pause>"],["Jeda panjang","<long pause>"],["Napas","<breath>"],["Tawa kecil","<chuckle>"],["Desah","<sigh>"],["Bisik","<whispers>"],["Kaget","<gasp>"]];
 const TEMPO={slow:"slower pace",normal:"",fast:"slightly faster pace"};
 const COLORS=["#3b82f6","#06b6d4","#8b5cf6","#10b981","#f59e0b","#ec4899"];
 const MAXCHARS=900, WPS=2.6;
 
-const S={voice:store.get('voice','Kore'),emo:store.get('emo','netral'),tempo:store.get('tempo','normal'),
+const S={gf:store.get('gf','all'),voice:store.get('voice','Kore'),emo:store.get('emo','netral'),tempo:store.get('tempo','normal'),
   gap:store.get('gap',0.25),scenes:[],rate:24000,busy:false,abort:null,stopAt:null,merged:null,url:null,peaks:null,total:0};
 const audio=new Audio(); audio.preload='auto';
 let preview=null;
@@ -340,14 +343,17 @@ $('#dict').addEventListener('input',saveDraft);
 /* ---------- voice / emotion UI ---------- */
 function renderVoices(){
   const q=$('#vSearch').value.trim().toLowerCase();const g=$('#vGrid');g.innerHTML='';
-  VOICES.filter(v=>!q||(v[0]+' '+v[1]).toLowerCase().includes(q)).forEach(([n,d])=>{
+  VOICES.filter(v=>(S.gf==='all'||v[2]===S.gf)&&(!q||(v[0]+' '+v[1]+' '+GEN[v[2]]).toLowerCase().includes(q))).forEach(([n,d,x])=>{
     const b=document.createElement('button');b.type='button';b.className='v';b.setAttribute('aria-pressed',n===S.voice);
-    b.innerHTML='<b>'+n+'</b><span>'+d+'</span>';
+    b.innerHTML='<b>'+n+'</b><span>'+d+'</span><em>'+(x==='W'?'♀ ':'♂ ')+GEN[x]+'</em>';
     b.onclick=()=>{S.voice=n;store.set('voice',n);setVoiceSummary();renderVoices();$('#vWrap').hidden=true;$('#vToggle').setAttribute('aria-expanded','false');$('#vToggle').textContent='Ganti';updateStats()};
     g.appendChild(b);
   });
+  if(!g.children.length){g.innerHTML='<p class="hint" style="grid-column:1/-1">Tidak ada suara yang cocok.</p>'}
 }
-function setVoiceSummary(){const v=VOICES.find(x=>x[0]===S.voice)||VOICES[3];$('#vName').textContent=v[0];$('#vDesc').textContent=v[1]}
+document.querySelectorAll('#vGender button').forEach(b=>b.onclick=()=>{S.gf=b.dataset.v;store.set('gf',S.gf);syncGender();renderVoices()});
+function syncGender(){document.querySelectorAll('#vGender button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.gf))}
+function setVoiceSummary(){const v=VOICES.find(x=>x[0]===S.voice)||VOICES[3];$('#vName').textContent=v[0];$('#vDesc').textContent=GEN[v[2]]+' · '+v[1]}
 $('#vToggle').onclick=()=>{const h=$('#vWrap').hidden;$('#vWrap').hidden=!h;$('#vToggle').setAttribute('aria-expanded',h);$('#vToggle').textContent=h?'Tutup':'Ganti'};
 $('#vSearch').addEventListener('input',renderVoices);
 function renderEmo(){
@@ -586,7 +592,7 @@ $('#vTest').onclick=async()=>{
 };
 
 /* ---------- init ---------- */
-initSettings();setVoiceSummary();renderVoices();renderEmo();syncTempo();renderTags();updateStats();updateStyle();
+initSettings();setVoiceSummary();syncGender();renderVoices();renderEmo();syncTempo();renderTags();updateStats();updateStyle();
 </script>
 </body>
 </html>
