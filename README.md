@@ -1,29 +1,34 @@
 # Pono Voice
 
-Naskah jadi suara (Gemini TTS) plus rencana visual per adegan untuk Shorts 9:16. Satu file HTML, tanpa build, tanpa server, jalan di browser HP.
+Naskah jadi suara (Gemini TTS) dan rencana visual per adegan untuk Shorts 9:16. Tanpa build, tanpa server, jalan di browser HP.
 
-## Cara pakai
-1. Buka aplikasi, tempel API key Gemini (buat di https://aistudio.google.com/apikey).
-2. Tulis naskah. Pisahkan adegan dengan satu baris kosong.
-3. Pilih suara (ada label pria/wanita), emosi, tempo, lalu konteks adegan singkat.
-4. Tekan **Generate**. Cek sinkron lewat waveform, ulang adegan yang kurang pas.
-5. **Unduh MP3** (atau WAV) dan **Salin durasi gambar** untuk dipakai di CapCut.
-6. Di bagian **Rencana visual**, pilih gaya lalu tekan **Rencanakan visual**: Gemini menyusun ide visual, prompt gambar, kata kunci footage, dan gerakan CapCut untuk tiap adegan.
+## Dua halaman, satu alamat
+| Alamat | Isi |
+|---|---|
+| `/` | **AI Voice**: naskah, suara (label pria/wanita), emosi, konteks, kamus ejaan, hasil MP3/WAV, durasi gambar. Tombol "Voice + Visual →" di atas. |
+| `/studio` | **Voice + Visual**: tiga tab, yaitu 1 Naskah & suara, 2 Visual, 3 Paket CapCut. |
 
-Kata salah ucap: isi **Kamus ejaan** dengan format `kata=ejaan`, lalu generate ulang adegan itu.
+Pilihan tampilan (Otomatis / Terang / Gelap) ada di pojok kanan atas dan berlaku di kedua halaman.
+API key, naskah, dan pengaturan dibagi antar halaman (disimpan di browser).
 
-## Alur ke CapCut (HP)
-- Impor audio MP3 ke CapCut.
-- Atur panjang tiap gambar/klip sesuai "durasi gambar" (sudah termasuk jeda antar adegan, totalnya sama dengan panjang audio).
-- Subtitle: CapCut HP tidak bisa impor file SRT, jadi pakai *Auto captions* dari audio yang sama, atau salin teks adegan lewat tombol **Salin teks adegan**.
+## Alur di /studio
+1. **Naskah & suara**: tulis naskah (adegan dipisah baris kosong), lalu **Generate** suara. Atau **Impor audio jadi** (MP3/WAV) supaya tidak memakai kuota suara. Batas adegan pada audio impor dideteksi dari jeda, lalu diperkirakan dari panjang teks, dan bisa digeser per adegan.
+2. **Visual**: pilih gaya dan jenis prompt (Gambar atau Video), lalu **Rencanakan visual**. Gemini membuat **master prompt** (mengunci gaya, palet, pencahayaan, subjek berulang) dan isi tiap adegan. Master dipasang di depan setiap prompt, jadi hasilnya konsisten. Master bisa dikunci dan dipakai ulang untuk video lain. Tool ini tidak membuat gambar atau video, hanya prompt untuk dipakai di generator text-to-image/video pilihanmu.
+3. **Paket CapCut**: unduh MP3/WAV, salin durasi gambar per adegan, dan ringkasan (teks + prompt final + waktu) sebagai teks atau file `.txt`.
+
+## Di CapCut (HP)
+- Impor audio. Atur panjang tiap klip sesuai "gambar … dtk" (sudah termasuk jeda antar adegan, totalnya sama dengan panjang audio).
+- CapCut HP tidak bisa impor SRT. Subtitle lewat *Auto captions*.
+
+## File
+`index.html`, `studio.html` (halaman), `style.css`, `theme.js`, `markup.js`, `core.js`, `studio.js` (kode bersama), `vercel.json` (alamat `/studio` tanpa `.html`).
 
 ## Deploy (dari HP)
-1. GitHub: unggah `index.html` dan `README.md` ke repo (**Add file → Upload files**), lalu Commit.
-2. Vercel: **Add New → Project**, pilih repo, Framework Preset = **Other**, tanpa Build Command, Deploy.
+1. GitHub: unggah semua file (Add file → Upload files → pilih semua), lalu Commit.
+2. Vercel: Add New → Project → pilih repo, Framework Preset = **Other**, tanpa Build Command, Deploy.
 
 ## Catatan teknis
-- API key hanya disimpan di browser (jika dicentang "Ingat key") dan dikirim langsung ke `generativelanguage.googleapis.com`.
-- Setelah deploy, batasi key ke domain Vercel kamu di Google AI Studio.
-- Suara: `POST /v1beta/interactions` (model TTS). Rencana visual: `POST /v1beta/models/{model}:generateContent` (model teks, default `gemini-3.8-flash`). Nama model bisa diganti di bagian "API key".
-- MP3 memakai library lamejs yang dimuat dari cdnjs saat tombol ditekan (perlu internet). Kalau gagal dimuat, pakai WAV.
-- Output audio: 24 kHz, mono. Tombol **Tes**, **Generate**, **Ulang**, dan **Rencanakan visual** memakai kuota API key.
+- API key hanya disimpan di browser (jika dicentang "Ingat key") dan dikirim langsung ke `generativelanguage.googleapis.com`. Setelah deploy, batasi key ke domain Vercel kamu.
+- Suara: `POST /v1beta/interactions`. Rencana visual: `POST /v1beta/models/{model}:generateContent` (default `gemini-3.8-flash`, bisa diganti di bagian "API key").
+- MP3 memakai lamejs yang dimuat dari cdnjs saat tombol ditekan (perlu internet). Jika gagal, pakai WAV.
+- Memakai kuota API key: **Tes**, **Generate**, **Ulang**, dan **Rencanakan visual**. Impor audio tidak memakai kuota.
