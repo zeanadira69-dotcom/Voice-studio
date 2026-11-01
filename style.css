@@ -1,7 +1,7 @@
 :root{
   --bg:#e6ebf2; --hi:#ffffff; --lo:#c3cbda; --text:#273044; --mut:#5b677b;
-  --acc:#2557d3; --grad:linear-gradient(135deg,#0788c4 0%,#2650d0 100%); --glow:rgba(38,80,208,.34);
-  --err:#c8301f; --ok:#0f8a48;
+  --acc:#2557d3; --grad:linear-gradient(135deg,#0676ad 0%,#2650d0 100%); --glow:rgba(38,80,208,.34);
+  --err:#b92a1a; --ok:#0b7239;
   --raise:7px 7px 16px var(--lo),-7px -7px 16px var(--hi);
   --raise-s:4px 4px 9px var(--lo),-4px -4px 9px var(--hi);
   --inset:inset 4px 4px 9px var(--lo),inset -4px -4px 9px var(--hi);
@@ -121,7 +121,7 @@ a{color:var(--acc)}
 .topbar .sp{flex:1}
 a.btn{text-decoration:none;color:var(--text)}
 .theme{display:flex;gap:4px;padding:4px;border-radius:14px;background:var(--bg);box-shadow:var(--inset-s)}
-.theme button{width:36px;height:34px;border:0;border-radius:10px;background:none;display:grid;place-items:center;color:var(--mut)}
+.theme button{width:38px;height:36px;border:0;border-radius:10px;background:none;display:grid;place-items:center;color:var(--mut)}
 .theme button svg{width:17px;height:17px}
 .theme button[aria-pressed=true]{background:var(--grad);color:#fff;box-shadow:0 4px 10px var(--glow)}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--bg);box-shadow:var(--inset);border-radius:16px;padding:5px;margin:18px 0 6px}

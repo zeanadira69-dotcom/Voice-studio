@@ -13,7 +13,7 @@ PVH.header=page=>`<div class="topbar">${page==='studio'?'<a class="btn sm" href=
     <button type="button" data-m="dark" aria-label="Gelap" title="Gelap">${PVH.ico.dark}</button>
   </div></div>
 <header>
-  <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="url(#lg)" stroke-width="2.6" stroke-linecap="round"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0788c4"/><stop offset="1" stop-color="#2650d0"/></linearGradient></defs><path d="M5 10v4M9 6v12M13 9v6M17 4v16M21 9v6"/></svg></div>
+  <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="url(#lg)" stroke-width="2.6" stroke-linecap="round"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0676ad"/><stop offset="1" stop-color="#2650d0"/></linearGradient></defs><path d="M5 10v4M9 6v12M13 9v6M17 4v16M21 9v6"/></svg></div>
   <h1>Pono Voice</h1><p>${page==='studio'?'Voice + Visual · Shorts 9:16':'Naskah jadi suara · Gemini TTS'}</p>
 </header>`;
 PVH.key=(tm)=>`<section class="card" id="keyCard">
@@ -37,7 +37,7 @@ PVH.key=(tm)=>`<section class="card" id="keyCard">
           <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (hemat &amp; cepat)</option>
           <option value="__custom">Model lain…</option>
         </select>
-        <input id="modelCustom" type="text" placeholder="id model, contoh: gemini-3.8-flash-tts" style="margin-top:8px" hidden autocapitalize="off" spellcheck="false">
+        <input id="modelCustom" aria-label="ID model suara" type="text" placeholder="id model, contoh: gemini-3.8-flash-tts" style="margin-top:8px" hidden autocapitalize="off" spellcheck="false">
       </div>
 ${tm?`      <div class="sub"><label class="f" for="textModel">Model teks (rencana visual)</label>
         <input id="textModel" type="text" value="gemini-3.8-flash" autocapitalize="off" spellcheck="false">
@@ -48,7 +48,7 @@ ${tm?`      <div class="sub"><label class="f" for="textModel">Model teks (rencan
 </section>`;
 PVH.script=`<section class="card">
   <div class="head"><span class="pill">Langkah 1</span><h2>Tulis naskah</h2></div>
-  <textarea id="script" placeholder="Pernah nggak kamu bingung, kenapa bahasa di dunia itu beda-beda?&#10;&#10;Karena ada gunung, laut, dan sungai yang memisahkan manusia di masa lalu. Jadi kata baru muncul di satu tempat."></textarea>
+  <textarea id="script" aria-label="Naskah" placeholder="Pernah nggak kamu bingung, kenapa bahasa di dunia itu beda-beda?&#10;&#10;Karena ada gunung, laut, dan sungai yang memisahkan manusia di masa lalu. Jadi kata baru muncul di satu tempat."></textarea>
   <div class="meta"><span id="sWords">0 kata</span><span id="sChars">0 karakter</span><span id="sDur">≈ 0 dtk</span><span id="sScenes">0 adegan</span></div>
   <p class="hint">Pisahkan adegan dengan satu baris kosong. Baca keras dulu: kalimat yang bikin lidah tersandung perlu dipersingkat.</p>
 </section>`;
@@ -61,7 +61,7 @@ PVH.voice=`<section class="card">
   </div>
   <div id="vWrap" hidden>
     <div class="seg g4" id="vGender" style="margin-top:12px"><button type="button" data-v="all">Semua</button><button type="button" data-v="P">Pria</button><button type="button" data-v="W">Wanita</button></div>
-    <input id="vSearch" type="text" placeholder="Cari nama atau karakter suara…" style="margin-top:12px" autocomplete="off">
+    <input id="vSearch" aria-label="Cari suara" type="text" placeholder="Cari nama atau karakter suara…" style="margin-top:12px" autocomplete="off">
     <div class="vgrid" id="vGrid"></div>
   </div>
 </section>`;
@@ -78,7 +78,7 @@ PVH.emo=`<section class="card">
 </section>`;
 PVH.ctx=`<section class="card">
   <div class="head"><span class="pill">Langkah 4</span><h2>Konteks adegan</h2></div>
-  <textarea id="ctx" class="sm" placeholder="Pembicara sedang berdiri di depan kamera, gaya edukatif"></textarea>
+  <textarea id="ctx" aria-label="Konteks adegan" class="sm" placeholder="Pembicara sedang berdiri di depan kamera, gaya edukatif"></textarea>
   <p class="hint">Tulis singkat, cukup cara menyampaikannya. Jangan tulis umur, gender, atau nama.</p>
   <div class="final" id="finalStyle">Gaya akhir: (kosong, suara netral)</div>
 </section>`;
@@ -87,7 +87,7 @@ PVH.dict=`<section class="card">
     <summary><span class="pill">Opsional</span><h2 style="font-size:16px;margin:0">Kamus ejaan</h2>
       <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
     <div style="margin-top:12px">
-      <textarea id="dict" class="sm" placeholder="Satu aturan per baris, format kata=ejaan&#10;rimousyen=rimiusyen&#10;AI=ei ai"></textarea>
+      <textarea id="dict" aria-label="Kamus ejaan" class="sm" placeholder="Satu aturan per baris, format kata=ejaan&#10;rimousyen=rimiusyen&#10;AI=ei ai"></textarea>
       <p class="hint">Kalau ada kata salah ucap, tulis ejaan yang kamu mau di sini lalu generate ulang. Teks di naskah tidak berubah, hanya yang dikirim ke suara.</p>
     </div>
   </details>
@@ -134,7 +134,7 @@ PVH.viz=`<div data-tab="2" hidden>
   <div class="head"><span class="pill">Visual</span><h2>Gaya &amp; master prompt</h2></div>
   <label class="f">Gaya visual</label>
   <div class="chips" id="vpre"></div>
-  <textarea id="vstyle" class="sm" style="margin-top:14px" placeholder="Contoh: realistis sinematik, alat berat konstruksi, pencahayaan dramatis"></textarea>
+  <textarea id="vstyle" aria-label="Gaya visual" class="sm" style="margin-top:14px" placeholder="Contoh: realistis sinematik, alat berat konstruksi, pencahayaan dramatis"></textarea>
   <div class="sub"><label class="f">Jenis prompt</label>
     <div class="seg two" id="vmode"><button type="button" data-v="image">Gambar</button><button type="button" data-v="video">Video</button></div>
     <p class="hint">Gambar = text-to-image. Video = text-to-video (ditambah gerakan dan durasi).</p></div>
