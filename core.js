@@ -81,6 +81,7 @@ function updateStats(){
   const d=Math.round(words/WPS);$('#sDur').textContent='≈ '+d+' dtk';$('#sScenes').textContent=sc+' adegan';
   $('#bInfo').textContent=sc+' adegan · ≈ '+d+' dtk';
   HK.stats();
+  if(!S.busy)$('#goTxt').textContent=goLabel();
   if(!S.busy)$('#bSub').textContent=sc?(VOICES.find(v=>v[0]===S.voice)||[])[0]+' · '+(EMOS.find(x=>x[0]===S.emo)||[])[1]:'Isi naskah dulu';
 }
 function updateStyle(){const s=styleStr();$('#finalStyle').textContent='Gaya akhir: '+(s||'(kosong, suara netral)')}
@@ -197,7 +198,9 @@ async function tts(text,style,voice,signal,onWait){
 
 /* ---------- generate ---------- */
 function needKey(){if(getKey())return false;HK.beforeKey();$('#keyBox').open=true;$('#keyCard').scrollIntoView({block:'center'});toast('Masukkan API key Gemini dulu.','err');return true}
-function setBusy(b){S.busy=b;$('#goTxt').textContent=b?'Batal':(S.scenes.length?'Generate ulang':'Generate');if(!b){$('#go').style.setProperty('--p','0%');updateStats()}}
+function canResume(){return !S.imported&&S.scenes.length>0&&S.scenes.some(s=>!s.pcm)&&(()=>{const p=parseScenes();return p.length===S.scenes.length&&p.every((t,i)=>t===S.scenes[i].text)})()}
+function goLabel(){return S.busy?'Batal':(canResume()?'Lanjutkan':(S.scenes.length?'Generate ulang':'Generate'))}
+function setBusy(b){S.busy=b;$('#goTxt').textContent=goLabel();if(!b){$('#go').style.setProperty('--p','0%');updateStats()}}
 async function genScene(i,onWait){
   const sc=S.scenes[i];sc.busy=true;sc.err=null;sc.wait='';sceneUI(i);
   try{
@@ -211,15 +214,29 @@ async function generateAll(){
   if(needKey())return;
   const parts=parseScenes();if(!parts.length){toast('Naskah masih kosong.','err');$('#script').focus();return}
   if(audio&&!audio.paused)audio.pause();
+  if(canResume()){
+    S.abort=new AbortController();setBusy(true);
+    await runQueue(0);
+    return;
+  }
   S.imported=null;$('#gap').disabled=false;
   S.scenes=parts.map(t=>({text:t,pcm:null,err:null,busy:false,start:0,dur:0}));
   buildScenesUI();$('#result').hidden=false;rebuild();
   S.abort=new AbortController();setBusy(true);
   $('#result').scrollIntoView({block:'start'});
+  await runQueue(0);
+}
+/* Generate berurutan mulai dari adegan `start`; adegan yang sudah punya suara dilewati
+   (kecuali `forced`). Berhenti di adegan pertama yang gagal, jadi setelah ganti API key
+   tinggal klik Lanjutkan / Ulang sekali, sisanya jalan otomatis. */
+async function runQueue(start,forced){
+  const N=S.scenes.length;
   try{
-    for(let i=0;i<S.scenes.length;i++){
-      $('#bSub').textContent='Adegan '+(i+1)+' dari '+S.scenes.length;
-      $('#go').style.setProperty('--p',(i/S.scenes.length*100)+'%');
+    for(let i=start;i<N;i++){
+      if(S.scenes[i].pcm&&i!==forced)continue;
+      const done=S.scenes.filter(s=>s.pcm).length;
+      $('#bSub').textContent='Adegan '+(i+1)+' dari '+N;
+      $('#go').style.setProperty('--p',(done/N*100)+'%');
       await genScene(i);
       if(S.scenes[i].err)break;
     }
@@ -231,11 +248,11 @@ async function generateAll(){
 }
 async function redoScene(i){
   if(S.busy||S.imported||needKey())return;
-  S.abort=new AbortController();S.busy=true;
-  const wasPlaying=!audio.paused;audio.pause();
-  await genScene(i);S.busy=false;
-  if(S.scenes[i].err)toast(S.scenes[i].err,'err');
-  else{toast('Adegan '+(i+1)+' diperbarui.','ok');playScene(i)}
+  S.abort=new AbortController();setBusy(true);
+  audio.pause();
+  const rest=S.scenes.slice(i+1).some(s=>!s.pcm);
+  await runQueue(i,i);
+  if(!rest&&S.scenes[i].pcm)playScene(i);
 }
 $('#go').addEventListener('click',generateAll);
 
